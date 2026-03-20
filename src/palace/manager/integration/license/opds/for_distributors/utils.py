@@ -35,6 +35,8 @@ def streaming_format_data(
         # Determine content type based on medium
         if medium == Edition.AUDIO_MEDIUM:
             content_type = DeliveryMechanism.STREAMING_AUDIO_CONTENT_TYPE
+        elif medium == Edition.PERIODICAL_MEDIUM:
+            content_type = DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE
         else:
             content_type = DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE
 

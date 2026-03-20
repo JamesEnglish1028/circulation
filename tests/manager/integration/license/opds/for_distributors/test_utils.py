@@ -53,6 +53,11 @@ def test_streaming_format_data_returns_none_for_non_streaming_links() -> None:
             id="book medium",
         ),
         pytest.param(
+            Edition.PERIODICAL_MEDIUM,
+            DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+            id="periodical medium",
+        ),
+        pytest.param(
             None,
             DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE,
             id="no medium defaults to text",

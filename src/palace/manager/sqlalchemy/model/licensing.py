@@ -1669,6 +1669,7 @@ class DeliveryMechanism(Base, HasSessionCache):
     NOOK_CONTENT_TYPE = "Nook via B&N"
     STREAMING_TEXT_CONTENT_TYPE = "Streaming Text"
     STREAMING_AUDIO_CONTENT_TYPE = "Streaming Audio"
+    STREAMING_PERIODICAL_CONTENT_TYPE = "Streaming Periodical"
     STREAMING_VIDEO_CONTENT_TYPE = "Streaming Video"
 
     NO_DRM = None
@@ -1713,6 +1714,7 @@ class DeliveryMechanism(Base, HasSessionCache):
     MEDIA_TYPES_FOR_STREAMING = {
         STREAMING_TEXT_CONTENT_TYPE: MediaTypes.TEXT_HTML_MEDIA_TYPE,
         STREAMING_AUDIO_CONTENT_TYPE: MediaTypes.TEXT_HTML_MEDIA_TYPE,
+        STREAMING_PERIODICAL_CONTENT_TYPE: MediaTypes.TEXT_HTML_MEDIA_TYPE,
     }
 
     _DEFAULT_DELIVERY_MECHANISM_SORT_LOOKUP = frozendict(
@@ -1756,6 +1758,9 @@ class DeliveryMechanism(Base, HasSessionCache):
                     # We prioritize streaming readers last, since they provide a
                     # worse user experience than downloadable formats.
                     DeliveryMechanismTuple(STREAMING_TEXT_CONTENT_TYPE, STREAMING_DRM),
+                    DeliveryMechanismTuple(
+                        STREAMING_PERIODICAL_CONTENT_TYPE, STREAMING_DRM
+                    ),
                 )
             )
         }
@@ -1791,6 +1796,7 @@ class DeliveryMechanism(Base, HasSessionCache):
         DeliveryMechanismTuple(
             MediaTypes.OVERDRIVE_AUDIOBOOK_MANIFEST_MEDIA_TYPE, LIBBY_DRM
         ),
+        DeliveryMechanismTuple(STREAMING_PERIODICAL_CONTENT_TYPE, STREAMING_DRM),
     }
 
     # If the default client supports a given media type with no DRM,
@@ -1861,6 +1867,8 @@ class DeliveryMechanism(Base, HasSessionCache):
             "Streaming Text",
         ):
             return EditionConstants.BOOK_MEDIUM
+        elif self.content_type == self.STREAMING_PERIODICAL_CONTENT_TYPE:
+            return EditionConstants.PERIODICAL_MEDIUM
         elif self.content_type == "Streaming Video" or (
             self.content_type is not None and self.content_type.startswith("video/")
         ):

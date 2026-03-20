@@ -39,6 +39,7 @@ class TestDeliveryMechanismFixture:
     epub_no_drm: DeliveryMechanism
     epub_adobe_drm: DeliveryMechanism
     overdrive_streaming_text: DeliveryMechanism
+    overdrive_streaming_periodical: DeliveryMechanism
     audiobook_drm_scheme: DeliveryMechanism
     transaction: DatabaseTransactionFixture
 
@@ -59,6 +60,11 @@ def test_delivery_mechanism_fixture(
         DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE,
         DeliveryMechanism.OVERDRIVE_DRM,
     )
+    fix.overdrive_streaming_periodical, ignore = DeliveryMechanism.lookup(
+        db.session,
+        DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+        DeliveryMechanism.STREAMING_DRM,
+    )
     fix.audiobook_drm_scheme, ignore = DeliveryMechanism.lookup(
         db.session,
         Representation.AUDIOBOOK_MANIFEST_MEDIA_TYPE,
@@ -76,6 +82,10 @@ class TestDeliveryMechanism:
         assert Edition.BOOK_MEDIUM == data.epub_no_drm.implicit_medium
         assert Edition.BOOK_MEDIUM == data.epub_adobe_drm.implicit_medium
         assert Edition.BOOK_MEDIUM == data.overdrive_streaming_text.implicit_medium
+        assert (
+            Edition.PERIODICAL_MEDIUM
+            == data.overdrive_streaming_periodical.implicit_medium
+        )
 
         # Test VIDEO_MEDIUM for "Streaming Video"
         streaming_video, _ = DeliveryMechanism.lookup(
@@ -114,6 +124,7 @@ class TestDeliveryMechanism:
         assert False == data.epub_no_drm.is_streaming
         assert False == data.epub_adobe_drm.is_streaming
         assert True == data.overdrive_streaming_text.is_streaming
+        assert True == data.overdrive_streaming_periodical.is_streaming
 
     def test_drm_scheme_media_type(
         self, test_delivery_mechanism_fixture: TestDeliveryMechanismFixture
@@ -139,6 +150,10 @@ class TestDeliveryMechanism:
             == data.overdrive_streaming_text.content_type_media_type
         )
         assert (
+            Representation.TEXT_HTML_MEDIA_TYPE + DeliveryMechanism.STREAMING_PROFILE
+            == data.overdrive_streaming_periodical.content_type_media_type
+        )
+        assert (
             Representation.AUDIOBOOK_MANIFEST_MEDIA_TYPE
             + DeliveryMechanism.FEEDBOOKS_AUDIOBOOK_PROFILE
             == data.audiobook_drm_scheme.content_type_media_type
@@ -161,6 +176,10 @@ class TestDeliveryMechanism:
             (None, DeliveryMechanism.FINDAWAY_DRM),
             (MediaTypes.AUDIOBOOK_MANIFEST_MEDIA_TYPE, DeliveryMechanism.NO_DRM),
             (MediaTypes.AUDIOBOOK_MANIFEST_MEDIA_TYPE, DeliveryMechanism.BEARER_TOKEN),
+            (
+                DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+                DeliveryMechanism.STREAMING_DRM,
+            ),
         ):
             # All of these DeliveryMechanisms were created when the
             # database was initialized.
