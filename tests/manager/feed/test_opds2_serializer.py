@@ -844,6 +844,25 @@ class TestOPDS2Serializer:
         entry = serializer.serialize_work_entry(data)
         assert entry["metadata"]["@type"] == "http://schema.org/Book"
 
+    def test_serialize_work_entry_periodical_medium(self):
+        """Periodical medium serializes to schema.org PublicationIssue."""
+        serializer = OPDS2Serializer()
+        data = WorkEntryData(
+            title="Periodical Type",
+            identifier="urn:id",
+            medium="Periodical",
+            image_links=[Link(href="http://image", rel="image", type="image/png")],
+            acquisition_links=[
+                Acquisition(
+                    href="http://acq",
+                    rel=OPDSFeed.OPEN_ACCESS_REL,
+                    type="application/epub+zip",
+                )
+            ],
+        )
+        entry = serializer.serialize_work_entry(data)
+        assert entry["metadata"]["@type"] == "http://schema.org/PublicationIssue"
+
     def test_acquisition_link_skipped_returns_none_in_publication_links(self):
         """When _serialize_acquisition_link returns None, no link is appended."""
         serializer = OPDS2Serializer()

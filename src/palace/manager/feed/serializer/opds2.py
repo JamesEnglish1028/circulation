@@ -53,6 +53,7 @@ class OPDS2Serializer(SerializerInterface[dict[str, Any]], LoggerMixin):
         {
             EditionConstants.BOOK_MEDIUM: schema_org.PublicationTypes.book,
             EditionConstants.AUDIO_MEDIUM: schema_org.PublicationTypes.audiobook,
+            EditionConstants.PERIODICAL_MEDIUM: schema_org.PublicationTypes.periodical,
         }
     )
 

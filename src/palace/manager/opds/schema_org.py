@@ -21,6 +21,7 @@ class PublicationTypes(StrEnum):
 
     book = "http://schema.org/Book"
     audiobook = "http://schema.org/Audiobook"
+    periodical = "http://schema.org/PublicationIssue"
 
 
 class BookFormat(StrEnum):
