@@ -273,6 +273,13 @@ class TestOPDS2WithODLExtractor:
                 id="text-html",
             ),
             pytest.param(
+                EditionConstants.PERIODICAL_MEDIUM,
+                MediaTypes.TEXT_HTML_MEDIA_TYPE,
+                DeliveryMechanism.STREAMING_DRM,
+                DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+                id="periodical-html",
+            ),
+            pytest.param(
                 None,
                 MediaTypes.TEXT_HTML_MEDIA_TYPE,
                 DeliveryMechanism.STREAMING_DRM,
@@ -336,6 +343,12 @@ class TestOPDS2WithODLExtractor:
                 MediaTypes.TEXT_HTML_MEDIA_TYPE,
                 {DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE},
                 id="skip-streaming-text",
+            ),
+            pytest.param(
+                EditionConstants.PERIODICAL_MEDIUM,
+                MediaTypes.TEXT_HTML_MEDIA_TYPE,
+                {DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE},
+                id="skip-streaming-periodical",
             ),
             pytest.param(
                 EditionConstants.AUDIO_MEDIUM,
@@ -527,3 +540,158 @@ class TestOPDS2WithODLExtractor:
         assert "5-12" in identifiers  # from typical_age_range
         assert "Children" in identifiers  # from audience_type
         assert "6-11" in identifiers  # from suggested ages
+
+    def test__extract_series_from_belongs_to_with_series_and_position(self) -> None:
+        """belongsTo.series with name and position extracts both correctly."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/Book",
+            identifier="urn:isbn:9780306406157",
+            title="Test Book",
+            belongs_to=rwpm.BelongsTo(
+                series_data=rwpm.Contributor(name="My Series", position=3)
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "My Series"
+        assert position == 3
+
+    def test__extract_series_from_belongs_to_no_position(self) -> None:
+        """belongsTo.series with no position returns None for position."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/Book",
+            identifier="urn:isbn:9780306406157",
+            title="Test Book",
+            belongs_to=rwpm.BelongsTo(
+                series_data=rwpm.Contributor(name="Positionless Series")
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Positionless Series"
+        assert position is None
+
+    def test__extract_series_from_belongs_to_no_series(self) -> None:
+        """Publication with no belongsTo.series returns (None, None)."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/Book",
+            identifier="urn:isbn:9780306406157",
+            title="Test Book",
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series is None
+        assert position is None
+
+    def test__extract_series_from_belongs_to_periodical_precedence(self) -> None:
+        """belongsTo.periodical takes precedence over Magazine and series."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                periodical_data=rwpm.Contributor(name="Official Periodical", position=7),
+                magazine_data=rwpm.Contributor(name="Legacy Magazine", position=4),
+                series_data=rwpm.Contributor(name="Series Name", position=1),
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Official Periodical"
+        assert position == 7
+
+    def test__extract_series_from_belongs_to_magazine_fallback(self) -> None:
+        """belongsTo.Magazine is used when periodical is absent."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                magazine_data=rwpm.Contributor(name="Legacy Magazine", position=4),
+                series_data=rwpm.Contributor(name="Series Name", position=1),
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Legacy Magazine"
+        assert position == 4
+
+    def test__extract_series_from_belongs_to_journal_fallback(self) -> None:
+        """belongsTo.journal is used when periodical and magazine are absent."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                journal_data=rwpm.Contributor(name="Journal Name", position=6),
+                series_data=rwpm.Contributor(name="Series Name", position=1),
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Journal Name"
+        assert position == 6
+
+    def test__extract_bibliographic_data_periodical_series_end_to_end(
+        self,
+        odl_extractor_fixture: ODLExtractorTestFixture,
+    ) -> None:
+        """Periodical belongsTo metadata is carried into BibliographicData."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier=odl_extractor_fixture.publication_identifier,
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                periodical_data=rwpm.Contributor(
+                    name="Official Periodical",
+                    position=12,
+                )
+            ),
+        )
+        publication = opds2.Publication(
+            metadata=metadata,
+            images=[
+                opds2.Link(
+                    href="http://example.org/cover.jpg",
+                    rel=rwpm.LinkRelations.cover,
+                    type="image/jpeg",
+                )
+            ],
+            links=[
+                opds2.StrictLink(
+                    rel=opds2.AcquisitionLinkRelations.open_access,
+                    type="application/epub+zip",
+                    href="http://example.org/acquisition",
+                )
+            ],
+        )
+        extractor = odl_extractor_fixture.extractor()
+
+        bibliographic_data = extractor._extract_bibliographic_data(
+            publication=publication,
+            identifier=odl_extractor_fixture.identifier_data(),
+            medium=EditionConstants.PERIODICAL_MEDIUM,
+        )
+
+        assert bibliographic_data.title == "Test Periodical"
+        assert bibliographic_data.medium == EditionConstants.PERIODICAL_MEDIUM
+        assert bibliographic_data.series == "Official Periodical"
+        assert bibliographic_data.series_position == 12

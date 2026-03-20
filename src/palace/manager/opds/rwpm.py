@@ -248,6 +248,41 @@ class BelongsTo(BaseOpdsModel):
     def collections(self) -> Sequence[Contributor]:
         return _named_or_sequence_to_sequence(self.collection, Contributor)
 
+    periodical_data: StrModelOrTuple[Contributor] | None = Field(
+        None, alias="periodical"
+    )
+
+    @cached_property
+    def periodicals(self) -> Sequence[Contributor]:
+        return _named_or_sequence_to_sequence(self.periodical_data, Contributor)
+
+    journal_data: StrModelOrTuple[Contributor] | None = Field(None, alias="journal")
+
+    @cached_property
+    def journals(self) -> Sequence[Contributor]:
+        return _named_or_sequence_to_sequence(self.journal_data, Contributor)
+
+    newspaper_data: StrModelOrTuple[Contributor] | None = Field(
+        None, alias="newspaper"
+    )
+
+    @cached_property
+    def newspapers(self) -> Sequence[Contributor]:
+        return _named_or_sequence_to_sequence(self.newspaper_data, Contributor)
+
+    magazine_data: StrModelOrTuple[Contributor] | None = Field(None, alias="magazine")
+    legacy_magazine_data: StrModelOrTuple[Contributor] | None = Field(
+        None, alias="Magazine"
+    )
+
+    @cached_property
+    def magazines(self) -> Sequence[Contributor]:
+        # Keep compatibility with feeds that used a non-standard uppercase key.
+        return (
+            _named_or_sequence_to_sequence(self.magazine_data, Contributor)
+            + _named_or_sequence_to_sequence(self.legacy_magazine_data, Contributor)
+        )
+
 
 def _named_or_sequence_to_sequence[NamedT: Named](
     value: str | NamedT | tuple[str | NamedT, ...] | None, cls: type[NamedT]
@@ -384,6 +419,7 @@ class Metadata(BaseOpdsModel):
     abridged: bool | None = None
 
     belongs_to: BelongsTo = Field(default_factory=BelongsTo, alias="belongsTo")
+    contains: dict[str, Any] | None = None
 
     presentation: PresentationProperties = Field(default_factory=PresentationProperties)
 

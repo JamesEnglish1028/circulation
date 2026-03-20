@@ -769,11 +769,18 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
                     # protection.formats and instead use the streaming delivery mechanism, which has
                     # its own access control (STREAMING_DRM). The content type is determined by the
                     # publication medium (audio vs. text).
-                    streaming_content_type = (
-                        DeliveryMechanism.STREAMING_AUDIO_CONTENT_TYPE
-                        if medium == Edition.AUDIO_MEDIUM
-                        else DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE
-                    )
+                    if medium == Edition.AUDIO_MEDIUM:
+                        streaming_content_type = (
+                            DeliveryMechanism.STREAMING_AUDIO_CONTENT_TYPE
+                        )
+                    elif medium == Edition.PERIODICAL_MEDIUM:
+                        streaming_content_type = (
+                            DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE
+                        )
+                    else:
+                        streaming_content_type = (
+                            DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE
+                        )
 
                     # Handle the case where we want to skip the derived license format
                     if streaming_content_type in self._skipped_license_formats:
@@ -889,9 +896,9 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         # FIXME: There are no measurements in OPDS 2.0
         measurements: list[Any] = []
 
-        # FIXME: There is no series information in OPDS 2.0
-        series = None
-        series_position = None
+        series, series_position = self._extract_series_from_belongs_to(
+            publication.metadata
+        )
 
         last_opds_update = publication.metadata.modified
 
@@ -917,6 +924,32 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             data_source_last_updated=last_opds_update,
             duration=duration,
         )
+
+    @classmethod
+    def _extract_series_from_belongs_to(
+        cls, metadata: opds2.PublicationMetadata
+    ) -> tuple[str | None, int | None]:
+        """Extract periodical/series name and position from belongsTo metadata.
+
+        Precedence order:
+        1. belongsTo.periodical (RWPM periodical extension)
+        2. belongsTo.magazine / belongsTo.Magazine
+        3. belongsTo.journal / belongsTo.newspaper
+        4. belongsTo.series (standard RWPM series)
+        """
+        for contributors in (
+            metadata.belongs_to.periodicals,
+            metadata.belongs_to.magazines,
+            metadata.belongs_to.journals,
+            metadata.belongs_to.newspapers,
+            metadata.belongs_to.series,
+        ):
+            if not contributors:
+                continue
+            contributor = contributors[0]
+            return str(contributor.name), contributor.position
+
+        return None, None
 
     @classmethod
     def feed_parse(cls, feed: bytes) -> PublicationFeedNoValidation:

@@ -212,6 +212,98 @@ def test_publication_feed_no_validation(
             Publication.model_validate(publication_dict)
 
 
+def test_publication_metadata_belongs_to_periodical() -> None:
+    metadata = PublicationMetadata.model_validate(
+        {
+            "@type": "http://schema.org/PublicationIssue",
+            "title": "Test",
+            "identifier": "urn:uuid:12345678-1234-1234-1234-1234567890ab",
+            "belongsTo": {
+                "periodical": {
+                    "name": "Official Periodical",
+                    "position": 7,
+                }
+            },
+        }
+    )
+
+    assert len(metadata.belongs_to.periodicals) == 1
+    assert str(metadata.belongs_to.periodicals[0].name) == "Official Periodical"
+    assert metadata.belongs_to.periodicals[0].position == 7
+
+    serialized = metadata.model_dump(mode="json", by_alias=True)
+    assert serialized["belongsTo"]["periodical"]["name"] == "Official Periodical"
+
+
+def test_publication_metadata_belongs_to_magazine_compatibility_alias() -> None:
+    metadata = PublicationMetadata.model_validate(
+        {
+            "@type": "http://schema.org/PublicationIssue",
+            "title": "Test",
+            "identifier": "urn:uuid:12345678-1234-1234-1234-1234567890ab",
+            "belongsTo": {
+                "Magazine": {
+                    "name": "Compatibility Magazine",
+                    "position": 3,
+                }
+            },
+        }
+    )
+
+    assert len(metadata.belongs_to.magazines) == 1
+    assert str(metadata.belongs_to.magazines[0].name) == "Compatibility Magazine"
+    assert metadata.belongs_to.magazines[0].position == 3
+
+    serialized = metadata.model_dump(mode="json", by_alias=True)
+    assert serialized["belongsTo"]["Magazine"]["name"] == "Compatibility Magazine"
+
+
+def test_publication_metadata_belongs_to_magazine_standard_key() -> None:
+    metadata = PublicationMetadata.model_validate(
+        {
+            "@type": "http://schema.org/PublicationIssue",
+            "title": "Test",
+            "identifier": "urn:uuid:12345678-1234-1234-1234-1234567890ab",
+            "belongsTo": {
+                "magazine": {
+                    "name": "Standard Magazine",
+                    "position": 5,
+                }
+            },
+        }
+    )
+
+    assert len(metadata.belongs_to.magazines) == 1
+    assert str(metadata.belongs_to.magazines[0].name) == "Standard Magazine"
+    assert metadata.belongs_to.magazines[0].position == 5
+
+    serialized = metadata.model_dump(mode="json", by_alias=True)
+    assert serialized["belongsTo"]["magazine"]["name"] == "Standard Magazine"
+
+
+def test_publication_metadata_contains_serial_content() -> None:
+    metadata = PublicationMetadata.model_validate(
+        {
+            "@type": "http://schema.org/PublicationIssue",
+            "title": "Test",
+            "identifier": "urn:uuid:12345678-1234-1234-1234-1234567890ab",
+            "contains": {
+                "issue": {
+                    "position": 42,
+                },
+                "series": {
+                    "name": "Contained Series",
+                    "position": 7,
+                },
+            },
+        }
+    )
+
+    assert metadata.contains is not None
+    assert metadata.contains["issue"]["position"] == 42
+    assert metadata.contains["series"]["name"] == "Contained Series"
+
+
 class TestAvailability:
     """Test the Availability model and its fields."""
 
