@@ -142,3 +142,11 @@ class AudiobooksEntryPoint(MediumEntryPoint):
 
 
 EntryPoint.register(AudiobooksEntryPoint, "Audiobooks")
+
+
+class PeriodicalsEntryPoint(MediumEntryPoint):
+    INTERNAL_NAME = "Periodical"
+    URI = "http://schema.org/PublicationIssue"
+
+
+EntryPoint.register(PeriodicalsEntryPoint, "Periodicals")

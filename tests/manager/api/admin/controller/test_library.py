@@ -101,6 +101,7 @@ class TestLibrarySettings:
         small_collection_languages: list[str] | None = None,
         facets_default_order: str = "added",
         enabled_entry_points: list[str] | None = None,
+        enable_periodicals_lane: bool = False,
     ) -> dict[str, Any]:
         """Generate default JSON payload for library import tests."""
         payload: dict[str, Any] = {
@@ -124,6 +125,7 @@ class TestLibrarySettings:
                 if enabled_entry_points is not None
                 else ["All", "Book", "Audio"]
             ),
+            "enable_periodicals_lane": enable_periodicals_lane,
         }
         return payload
 
@@ -828,6 +830,7 @@ class TestLibrarySettings:
                     short_name="lib2",
                     website_url="https://library2.example.com",
                     patron_support_email="support2@example.com",
+                    enable_periodicals_lane=True,
                 ),
             ]
         }
@@ -864,6 +867,7 @@ class TestLibrarySettings:
         assert lib1.settings.small_collection_languages == ["spa"]
         assert lib1.settings.facets_default_order == "added"
         assert lib1.settings.enabled_entry_points == ["All", "Book", "Audio"]
+        assert lib1.settings.enable_periodicals_lane is False
 
         lib2 = get_one(db.session, Library, short_name="lib2")
         assert lib2 is not None
@@ -874,6 +878,7 @@ class TestLibrarySettings:
         assert lib2.settings.small_collection_languages == ["spa"]
         assert lib2.settings.facets_default_order == "added"
         assert lib2.settings.enabled_entry_points == ["All", "Book", "Audio"]
+        assert lib2.settings.enable_periodicals_lane is True
 
         # Verify default lanes were created
         assert len(lib1.lanes) > 0

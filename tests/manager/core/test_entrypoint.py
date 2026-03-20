@@ -6,6 +6,7 @@ from palace.manager.core.entrypoint import (
     EntryPoint,
     EverythingEntryPoint,
     MediumEntryPoint,
+    PeriodicalsEntryPoint,
 )
 from palace.manager.search.filter import Filter
 from palace.manager.sqlalchemy.model.edition import Edition
@@ -17,20 +18,23 @@ from tests.fixtures.library import LibraryFixture
 
 class TestEntryPoint:
     def test_defaults(self):
-        everything, ebooks, audiobooks = EntryPoint.ENTRY_POINTS
+        everything, ebooks, audiobooks, periodicals = EntryPoint.ENTRY_POINTS
         assert EverythingEntryPoint == everything
         assert EbooksEntryPoint == ebooks
         assert AudiobooksEntryPoint == audiobooks
+        assert PeriodicalsEntryPoint == periodicals
 
         display = EntryPoint.DISPLAY_TITLES
         assert "Ebooks" == display[ebooks]
         assert "Audiobooks" == display[audiobooks]
+        assert "Periodicals" == display[periodicals]
 
         assert Edition.BOOK_MEDIUM == EbooksEntryPoint.INTERNAL_NAME
         assert Edition.AUDIO_MEDIUM == AudiobooksEntryPoint.INTERNAL_NAME
+        assert Edition.PERIODICAL_MEDIUM == PeriodicalsEntryPoint.INTERNAL_NAME
 
         assert "http://schema.org/CreativeWork" == everything.URI
-        for ep in (EbooksEntryPoint, AudiobooksEntryPoint):
+        for ep in (EbooksEntryPoint, AudiobooksEntryPoint, PeriodicalsEntryPoint):
             assert ep.URI == Edition.medium_to_additional_type[ep.INTERNAL_NAME]
 
     def test_no_changes(self, db: DatabaseTransactionFixture):

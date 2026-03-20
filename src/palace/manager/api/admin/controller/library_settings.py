@@ -51,6 +51,7 @@ class LibraryImportInfo(BaseModel):
     small_collection_languages: list[str]
     facets_default_order: str
     enabled_entry_points: list[str]
+    enable_periodicals_lane: bool = False
 
 
 class LibrarySettingsController(AdminPermissionsControllerMixin):
@@ -209,7 +210,8 @@ class LibrarySettingsController(AdminPermissionsControllerMixin):
                     "large_collection_languages": ["en"],
                     "small_collection_languages": ["es"],
                     "facets_default_order": "added",
-                    "enabled_entry_points": ["All", "Book", "Audio"]
+                    "enabled_entry_points": ["All", "Book", "Audio"],
+                    "enable_periodicals_lane": false
                 },
                 ...
             ]
@@ -318,6 +320,7 @@ class LibrarySettingsController(AdminPermissionsControllerMixin):
             "small_collection_languages": library_import_info.small_collection_languages,
             "facets_default_order": library_import_info.facets_default_order,
             "enabled_entry_points": library_import_info.enabled_entry_points,
+            "enable_periodicals_lane": library_import_info.enable_periodicals_lane,
         }
 
         # Validate settings using LibrarySettings model
