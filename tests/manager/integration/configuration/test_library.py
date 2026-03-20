@@ -97,6 +97,20 @@ def test_minimum_featured_quality_constraints(
     assert "less than or equal to 1" in excinfo.value.problem_detail.detail
 
 
+def test_enable_periodicals_lane_default(
+    library_settings: LibrarySettingsFixture,
+) -> None:
+    settings = library_settings()
+    assert settings.enable_periodicals_lane is False
+
+
+def test_enable_periodicals_lane_can_be_enabled(
+    library_settings: LibrarySettingsFixture,
+) -> None:
+    settings = library_settings(enable_periodicals_lane=True)
+    assert settings.enable_periodicals_lane is True
+
+
 class TestFilteredAudiences:
     def test_filtered_audiences_valid(
         self, library_settings: LibrarySettingsFixture

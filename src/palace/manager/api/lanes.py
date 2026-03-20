@@ -157,6 +157,20 @@ def create_default_lanes(_db: Session, library: Library) -> None:
             _db, library, language, priority=priority
         )
 
+    if library.settings.enable_periodicals_lane:
+        periodicals_lane, ignore = create(
+            _db,
+            Lane,
+            library=library,
+            display_name="Periodicals",
+            genres=[],
+            priority=priority,
+            media=[Edition.PERIODICAL_MEDIUM],
+            languages=None,
+        )
+        periodicals_lane.visible = True
+        priority += 1
+
     create_world_languages_lane(_db, library, small, tiny, priority)
 
 

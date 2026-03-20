@@ -287,6 +287,35 @@ class TestLaneCreation:
         assert 1 == len(audiences)
         assert Classifier.AUDIENCE_CHILDREN == audiences[0]
 
+    def test_create_default_lanes_with_top_level_periodicals_enabled(
+        self, db: DatabaseTransactionFixture, library_fixture: LibraryFixture
+    ):
+        settings = library_fixture.mock_settings()
+        settings.large_collection_languages = ["eng"]
+        settings.enable_periodicals_lane = True
+        library = library_fixture.library(settings=settings)
+
+        create_default_lanes(db.session, library)
+        lanes = (
+            db.session.query(Lane)
+            .filter(Lane.library == library)
+            .filter(Lane.parent_id == None)
+            .all()
+        )
+
+        assert {
+            "Fiction",
+            "Nonfiction",
+            "Young Adult Fiction",
+            "Young Adult Nonfiction",
+            "Children and Middle Grade",
+            "Periodicals",
+        } == {x.display_name for x in lanes}
+
+        [periodicals] = [x for x in lanes if x.display_name == "Periodicals"]
+        assert periodicals.media == [Edition.PERIODICAL_MEDIUM]
+        assert periodicals.priority == 5
+
     def test_create_default_when_more_than_one_large_language_is_configured(
         self, db: DatabaseTransactionFixture, library_fixture: LibraryFixture
     ):

@@ -164,6 +164,20 @@ class LibrarySettings(BaseSettings):
             level=Level.ALL_ACCESS,
         ),
     ] = 15
+    enable_periodicals_lane: Annotated[
+        bool,
+        LibraryFormMetadata(
+            label="Enable top-level Periodicals lane",
+            description="Create a top-level Periodicals lane in the default lane structure.",
+            type=FormFieldType.SELECT,
+            options={
+                True: "Enabled",
+                False: "Disabled",
+            },
+            category="Lanes & Filters",
+            level=Level.SYS_ADMIN_OR_MANAGER,
+        ),
+    ] = False
     minimum_featured_quality: Annotated[
         float,
         LibraryFormMetadata(
