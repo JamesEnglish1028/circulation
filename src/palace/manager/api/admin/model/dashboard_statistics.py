@@ -47,21 +47,21 @@ class PatronStatistics(StatisticsBaseModel):
 class InventoryStatistics(StatisticsBaseModel):
     """Inventory statistics."""
 
-    titles: NonNegativeInt = Field(description="Number of books.")
+    titles: NonNegativeInt = Field(description="Number of titles.")
     available_titles: NonNegativeInt = Field(
-        description="Number of books available to lend."
+        description="Number of titles available to lend."
     )
     open_access_titles: NonNegativeInt = Field(
-        description="Number of books with an Open Access license."
+        description="Number of titles with an Open Access license."
     )
     licensed_titles: NonNegativeInt = Field(
-        description="Number of licensed books (either metered or unlimited)."
+        description="Number of licensed titles (either metered or unlimited)."
     )
     unlimited_license_titles: NonNegativeInt = Field(
-        description="Number of books with an unlimited license."
+        description="Number of titles with an unlimited license."
     )
     metered_license_titles: NonNegativeInt = Field(
-        description="Number of books with a metered (counted) license."
+        description="Number of titles with a metered (counted) license."
     )
     metered_licenses_owned: NonNegativeInt = Field(
         description="Metered licenses owned."

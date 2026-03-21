@@ -10,6 +10,7 @@ from palace.manager.api.admin.model.dashboard_statistics import (
     InventoryStatistics,
     PatronStatistics,
 )
+from palace.manager.sqlalchemy.constants import EditionConstants
 from palace.manager.sqlalchemy.model.admin import Admin, AdminRole
 from palace.manager.sqlalchemy.model.datasource import DataSource
 from palace.manager.sqlalchemy.model.licensing import LicensePoolStatus
@@ -640,3 +641,49 @@ def test_stats_parent_collection_permissions(
     # No exceptions were thrown
     assert child.id in collection_ids
     assert parent.name not in collection_ids
+
+
+def test_stats_collections_include_periodical_medium(
+    admin_statistics_session: AdminStatisticsSessionFixture,
+):
+    """Inventory-by-medium responses should include Periodical when present."""
+
+    session = admin_statistics_session
+    admin = session.admin
+    db = session.db
+
+    admin.add_role(AdminRole.SYSTEM_ADMIN)
+
+    default_library = db.library("Default Library", "default")
+    default_collection = db.collection(name="Default Collection")
+    default_collection.associated_libraries += [default_library]
+
+    # Add one periodical title with active metered licenses.
+    edition, pool = db.edition(
+        with_license_pool=True,
+        with_open_access_download=False,
+        data_source_name=DataSource.OVERDRIVE,
+        collection=default_collection,
+    )
+    edition.medium = EditionConstants.PERIODICAL_MEDIUM
+    pool.open_access = False
+    pool.licenses_owned = 7
+    pool.licenses_available = 3
+
+    response = session.get_statistics()
+
+    assert EditionConstants.PERIODICAL_MEDIUM in response.inventory_by_medium
+    periodical_inventory = response.inventory_by_medium[
+        EditionConstants.PERIODICAL_MEDIUM
+    ]
+    assert 1 == periodical_inventory.titles
+    assert 1 == periodical_inventory.available_titles
+    assert 0 == periodical_inventory.open_access_titles
+    assert 1 == periodical_inventory.licensed_titles
+    assert 0 == periodical_inventory.unlimited_license_titles
+    assert 1 == periodical_inventory.metered_license_titles
+    assert 7 == periodical_inventory.metered_licenses_owned
+    assert 3 == periodical_inventory.metered_licenses_available
+
+    assert 1 == response.inventory_summary.titles
+    assert 1 == response.inventory_summary.available_titles
