@@ -290,18 +290,20 @@ def test_publication_metadata_contains_serial_content() -> None:
             "contains": {
                 "issue": {
                     "position": 42,
-                },
-                "series": {
-                    "name": "Contained Series",
-                    "position": 7,
+                    "article": [
+                        {"name": "Article One"},
+                        {"name": "Article Two"},
+                    ],
                 },
             },
         }
     )
 
     assert metadata.contains is not None
-    assert metadata.contains["issue"]["position"] == 42
-    assert metadata.contains["series"]["name"] == "Contained Series"
+    assert metadata.contains.issue is not None
+    assert metadata.contains.issue.position == 42
+    assert len(metadata.contains.issue.article) == 2
+    assert metadata.contains.issue.article[0].name == "Article One"
 
 
 class TestAvailability:

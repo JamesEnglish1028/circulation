@@ -181,6 +181,7 @@ class Contributor(Named):
         ]
 
     position: NonNegativeInt | None = None
+    volume: NonNegativeInt | None = None
     links: CompactCollection[Link] = Field(default_factory=CompactCollection)
 
     @model_serializer(mode="wrap")
@@ -292,6 +293,35 @@ def _named_or_sequence_to_sequence[NamedT: Named](
         for item in obj_or_tuple_to_tuple(value)
     )
 
+class Article(BaseOpdsModel):
+    """
+    An article within a periodical issue.
+
+    https://github.com/readium/webpub-manifest/tree/master/contexts/default#contains
+    """
+
+    name: str | None = None
+
+
+class Issue(BaseOpdsModel):
+    """
+    An issue within a periodical publication, describing its position and table of contents.
+
+    https://github.com/readium/webpub-manifest/tree/master/contexts/default#contains
+    """
+
+    position: NonNegativeInt | None = None
+    article: list[Article] = Field(default_factory=list)
+
+
+class Contains(BaseOpdsModel):
+    """
+    Describes the content structure of a periodical publication.
+
+    https://github.com/readium/webpub-manifest/tree/master/contexts/default#contains
+    """
+
+    issue: Issue | None = None
 
 class Metadata(BaseOpdsModel):
     """
@@ -419,7 +449,7 @@ class Metadata(BaseOpdsModel):
     abridged: bool | None = None
 
     belongs_to: BelongsTo = Field(default_factory=BelongsTo, alias="belongsTo")
-    contains: dict[str, Any] | None = None
+    contains: Contains | None = None
 
     presentation: PresentationProperties = Field(default_factory=PresentationProperties)
 

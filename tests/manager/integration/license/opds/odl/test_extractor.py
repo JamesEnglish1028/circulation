@@ -695,3 +695,80 @@ class TestOPDS2WithODLExtractor:
         assert bibliographic_data.medium == EditionConstants.PERIODICAL_MEDIUM
         assert bibliographic_data.series == "Official Periodical"
         assert bibliographic_data.series_position == 12
+
+    def test__extract_series_from_belongs_to_magazine_volume_fallback(self) -> None:
+        """belongsTo.magazine with volume but no position uses volume as series_position."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Magazine Issue",
+            belongs_to=rwpm.BelongsTo(
+                magazine_data=rwpm.Contributor(name="American Scientist", volume=2025)
+            ),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "American Scientist"
+        assert position == 2025
+
+    def test__extract_series_from_belongs_to_contains_issue_position(self) -> None:
+        """contains.issue.position is used as series_position when present."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:emagazines:issue:american_scientist:20250812",
+            title="September/October 2025",
+            belongs_to=rwpm.BelongsTo(
+                magazine_data=rwpm.Contributor(name="American Scientist", volume=2025)
+            ),
+            contains=rwpm.Contains(issue=rwpm.Issue(position=224)),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "American Scientist"
+        assert position == 224
+
+    def test__extract_series_from_belongs_to_contains_overrides_contributor_position(
+        self,
+    ) -> None:
+        """contains.issue.position takes precedence over contributor.position."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                periodical_data=rwpm.Contributor(name="Science Journal", position=5)
+            ),
+            contains=rwpm.Contains(issue=rwpm.Issue(position=52)),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Science Journal"
+        assert position == 52
+
+    def test__extract_series_from_belongs_to_contains_no_position(self) -> None:
+        """contains present but issue.position absent falls back to contributor."""
+        metadata = opds2.PublicationMetadata(
+            type="http://schema.org/PublicationIssue",
+            identifier="urn:isbn:9780306406157",
+            title="Test Periodical",
+            belongs_to=rwpm.BelongsTo(
+                magazine_data=rwpm.Contributor(name="People", position=3)
+            ),
+            contains=rwpm.Contains(issue=rwpm.Issue()),
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "People"
+        assert position == 3

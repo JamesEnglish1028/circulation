@@ -931,12 +931,20 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
     ) -> tuple[str | None, int | None]:
         """Extract periodical/series name and position from belongsTo metadata.
 
-        Precedence order:
+        Precedence order for series name:
         1. belongsTo.periodical (RWPM periodical extension)
         2. belongsTo.magazine / belongsTo.Magazine
         3. belongsTo.journal / belongsTo.newspaper
         4. belongsTo.series (standard RWPM series)
+
+        Precedence order for series position:
+        1. contains.issue.position — most specific issue-level ordinal
+        2. contributor.position — standard RWPM series position
+        3. contributor.volume — fallback for feeds that use volume instead of position
         """
+        series_name: str | None = None
+        contributor_position: int | None = None
+
         for contributors in (
             metadata.belongs_to.periodicals,
             metadata.belongs_to.magazines,
@@ -947,9 +955,25 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             if not contributors:
                 continue
             contributor = contributors[0]
-            return str(contributor.name), contributor.position
+            series_name = str(contributor.name)
+            contributor_position = (
+                contributor.position
+                if contributor.position is not None
+                else contributor.volume
+            )
+            break
 
-        return None, None
+        if series_name is None:
+            return None, None
+
+        # contains.issue.position is the most precise ordinal for a periodical issue
+        # and takes priority over the contributor-level position or volume.
+        if metadata.contains is not None and metadata.contains.issue is not None:
+            issue_position = metadata.contains.issue.position
+            if issue_position is not None:
+                return series_name, issue_position
+
+        return series_name, contributor_position
 
     @classmethod
     def feed_parse(cls, feed: bytes) -> PublicationFeedNoValidation:
