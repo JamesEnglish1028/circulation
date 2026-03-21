@@ -5,7 +5,7 @@ from collections.abc import Iterable, Sequence
 from functools import cached_property
 from typing import Any, Literal, Self, TypeVar, cast, get_args, overload
 
-from pydantic import GetCoreSchemaHandler, model_serializer
+from pydantic import GetCoreSchemaHandler, model_serializer, model_validator
 from pydantic_core import core_schema
 from pydantic_core.core_schema import SerializerFunctionWrapHandler
 from uritemplate import URITemplate, variable
@@ -26,6 +26,22 @@ class BaseLink(BaseOpdsModel):
     rel: StrOrTuple[str] | None = None
     templated: bool = False
     type: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_templated_flag(cls, data: Any) -> Any:
+        """Clear the templated flag if the href contains no actual template variables.
+
+        Some feeds (e.g. eMagazines) incorrectly set ``templated: true`` on plain
+        URLs that contain no RFC 6570 template expressions.  Normalising the flag
+        at parse time means all downstream callers of :meth:`href_templated` behave
+        correctly without requiring individual fixes.
+        """
+        if isinstance(data, dict):
+            href = data.get("href", "")
+            if data.get("templated") and href and not URITemplate(href).variable_names:
+                data = {**data, "templated": False}
+        return data
 
     @cached_property
     def rels(self) -> Sequence[str]:

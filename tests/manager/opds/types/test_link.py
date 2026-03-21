@@ -22,6 +22,41 @@ class TestBaseLink:
             link.href_templated({"x": 1, "y": "foo"}) == "http://example.com/?x=1&y=foo"
         )
 
+    def test_normalize_templated_flag_clears_spurious_true(self):
+        """templated=True with no actual template variables should be normalised to False."""
+        link = BaseLink(
+            href="http://example.com/plain/url", rel="foo", templated=True
+        )
+        assert link.templated is False
+
+    def test_normalize_templated_flag_preserves_real_template(self):
+        """templated=True on a URL that contains template variables must be kept."""
+        link = BaseLink(
+            href="http://example.com/{authentication_token}", rel="foo", templated=True
+        )
+        assert link.templated is True
+        assert link.href_templated({"authentication_token": "tok"}) == (
+            "http://example.com/tok"
+        )
+
+    def test_normalize_templated_false_unchanged(self):
+        """templated=False (the default) is never modified."""
+        link = BaseLink(href="http://example.com/plain", rel="foo")
+        assert link.templated is False
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "https://api.emagazines.com/content/issue/224",
+            "https://api.example.com/download?id=123",
+        ],
+    )
+    def test_normalize_emagazines_style_spurious_flag(self, href: str):
+        """Plain URLs marked templated=True (as eMagazines feeds do) are normalised."""
+        link = BaseLink(href=href, rel="http://opds-spec.org/acquisition", templated=True)
+        assert link.templated is False
+        assert link.href_templated() == href
+
 
 class CompactCollectionFixture:
     def __init__(self):
