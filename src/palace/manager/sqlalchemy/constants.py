@@ -265,6 +265,7 @@ class MediaTypes:
     AUDIOBOOK_PACKAGE_MEDIA_TYPE = "application/audiobook+zip"
     AUDIOBOOK_PACKAGE_LCP_MEDIA_TYPE = "application/audiobook+lcp"
     MARC_MEDIA_TYPE = "application/marc"
+    WEBPUB_MANIFEST_MEDIA_TYPE = "application/webpub+json"
 
     # To distinguish internally between Overdrive's audiobook and
     # (hopefully future) ebook manifests, we invent values for the
@@ -283,6 +284,10 @@ class MediaTypes:
         AUDIOBOOK_PACKAGE_MEDIA_TYPE,
         AUDIOBOOK_PACKAGE_LCP_MEDIA_TYPE,
         MP3_MEDIA_TYPE,
+    ]
+
+    PERIODICAL_MEDIA_TYPES = [
+        WEBPUB_MANIFEST_MEDIA_TYPE,
     ]
 
     BOOK_MEDIA_TYPES = [

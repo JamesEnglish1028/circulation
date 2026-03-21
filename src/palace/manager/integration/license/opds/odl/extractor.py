@@ -650,15 +650,52 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
 
         return links
 
+    @staticmethod
+    def _webpub_streaming_format_data(
+        link_data: LinkData,
+        medium: str | None,
+        rights_uri: str,
+    ) -> FormatData | None:
+        """Translate an application/webpub+json acquisition link into a streaming FormatData.
+
+        application/webpub+json is the RWPM streaming manifest format used by periodical feeds
+        (e.g. eMagazines). The link URL is the manifest endpoint that the client streams from
+        directly. We map it to the appropriate STREAMING_* content type based on the publication
+        medium so that the delivery mechanism is correctly registered.
+
+        :param link_data: The link data extracted from the acquisition link.
+        :param medium: The publication medium (e.g. Edition.PERIODICAL_MEDIUM).
+        :param rights_uri: Rights URI for the format.
+        :return: FormatData with STREAMING_DRM, or None if the link is not webpub+json.
+        """
+        if link_data.media_type != MediaTypes.WEBPUB_MANIFEST_MEDIA_TYPE:
+            return None
+
+        if medium == Edition.AUDIO_MEDIUM:
+            content_type = DeliveryMechanism.STREAMING_AUDIO_CONTENT_TYPE
+        elif medium == Edition.PERIODICAL_MEDIUM:
+            content_type = DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE
+        else:
+            content_type = DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE
+
+        return FormatData(
+            content_type=content_type,
+            drm_scheme=DeliveryMechanism.STREAMING_DRM,
+            link=link_data,
+            rights_uri=rights_uri,
+        )
+
     def _extract_opds2_formats(
         self,
         links: Sequence[opds2.StrictLink],
         rights_uri: str,
+        medium: str | None = None,
     ) -> list[FormatData]:
         """Find circulation formats in non open-access acquisition links.
 
-        :param ast_link_list: List of Link objects
+        :param links: List of Link objects
         :param rights_uri: Rights URI
+        :param medium: Publication medium, used to resolve streaming content types.
         :return: List of additional circulation formats found in non-open access links
         """
         formats = []
@@ -670,6 +707,17 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
                 continue
 
             link_data = self._extract_link(link)
+
+            # application/webpub+json is the RWPM streaming manifest format. Translate it
+            # to the appropriate streaming delivery mechanism rather than storing the raw
+            # media type, which is not in BOOK_MEDIA_TYPES and would be unfulfillable.
+            if (
+                streaming_format := self._webpub_streaming_format_data(
+                    link_data, medium, rights_uri
+                )
+            ) is not None:
+                formats.append(streaming_format)
+                continue
 
             for (
                 content_type,
@@ -844,7 +892,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         else:
             license_status = LicensePoolStatus.REMOVED
 
-        formats = self._extract_opds2_formats(publication.links, rights_uri)
+        formats = self._extract_opds2_formats(publication.links, rights_uri, medium)
         links = [
             self._extract_link(link)
             for link in publication.links

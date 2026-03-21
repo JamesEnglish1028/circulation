@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from palace.manager.data_layer.identifier import IdentifierData
+from palace.manager.data_layer.link import LinkData
 from palace.manager.integration.license.opds.odl.constants import FEEDBOOKS_AUDIO
 from palace.manager.integration.license.opds.odl.extractor import OPDS2WithODLExtractor
 from palace.manager.opds import opds2, rwpm
@@ -18,7 +19,9 @@ from palace.manager.opds.opds2 import PublicationFeedNoValidation, StrictLink
 from palace.manager.opds.schema_org import Audience
 from palace.manager.sqlalchemy.constants import EditionConstants, MediaTypes
 from palace.manager.sqlalchemy.model.contributor import Contributor
+from palace.manager.sqlalchemy.model.edition import Edition
 from palace.manager.sqlalchemy.model.licensing import DeliveryMechanism, RightsStatus
+from palace.manager.sqlalchemy.model.resource import Hyperlink
 from palace.manager.util.datetime_helpers import utc_now
 from tests.fixtures.files import OPDS2FilesFixture
 
@@ -772,3 +775,132 @@ class TestOPDS2WithODLExtractor:
 
         assert series == "People"
         assert position == 3
+
+    # -------------------------------------------------------------------------
+    # application/webpub+json streaming acquisition tests
+    # -------------------------------------------------------------------------
+
+    def test__webpub_streaming_format_data_returns_none_for_non_webpub(self) -> None:
+        """Non-webpub links return None."""
+        link = LinkData(
+            rel=Hyperlink.GENERIC_OPDS_ACQUISITION,
+            media_type=MediaTypes.EPUB_MEDIA_TYPE,
+            href="http://example.com/book.epub",
+        )
+        result = OPDS2WithODLExtractor._webpub_streaming_format_data(
+            link, Edition.BOOK_MEDIUM, RightsStatus.IN_COPYRIGHT
+        )
+        assert result is None
+
+    @pytest.mark.parametrize(
+        "medium,expected_content_type",
+        [
+            pytest.param(
+                Edition.PERIODICAL_MEDIUM,
+                DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+                id="periodical",
+            ),
+            pytest.param(
+                Edition.AUDIO_MEDIUM,
+                DeliveryMechanism.STREAMING_AUDIO_CONTENT_TYPE,
+                id="audio",
+            ),
+            pytest.param(
+                Edition.BOOK_MEDIUM,
+                DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE,
+                id="book defaults to text",
+            ),
+            pytest.param(
+                None,
+                DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE,
+                id="no medium defaults to text",
+            ),
+        ],
+    )
+    def test__webpub_streaming_format_data_maps_medium_to_content_type(
+        self, medium: str | None, expected_content_type: str
+    ) -> None:
+        """application/webpub+json is translated to the correct streaming content type."""
+        link = LinkData(
+            rel=Hyperlink.GENERIC_OPDS_ACQUISITION,
+            media_type=MediaTypes.WEBPUB_MANIFEST_MEDIA_TYPE,
+            href="http://example.com/catalog/39696",
+        )
+        result = OPDS2WithODLExtractor._webpub_streaming_format_data(
+            link, medium, RightsStatus.IN_COPYRIGHT
+        )
+        assert result is not None
+        assert result.content_type == expected_content_type
+        assert result.drm_scheme == DeliveryMechanism.STREAMING_DRM
+        assert result.link == link
+
+    def test__extract_opds2_formats_webpub_periodical(
+        self,
+        odl_extractor_fixture: ODLExtractorTestFixture,
+    ) -> None:
+        """application/webpub+json in a periodical publication becomes STREAMING_PERIODICAL."""
+        extractor = odl_extractor_fixture.extractor()
+        links = [
+            opds2.StrictLink(
+                rel="http://opds-spec.org/acquisition",
+                type=MediaTypes.WEBPUB_MANIFEST_MEDIA_TYPE,
+                href="http://example.com/catalog/39696",
+            )
+        ]
+
+        formats = extractor._extract_opds2_formats(
+            links,
+            rights_uri=RightsStatus.IN_COPYRIGHT,
+            medium=Edition.PERIODICAL_MEDIUM,
+        )
+
+        assert len(formats) == 1
+        assert formats[0].content_type == DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE
+        assert formats[0].drm_scheme == DeliveryMechanism.STREAMING_DRM
+
+    def test__extract_opds2_formats_webpub_book_medium(
+        self,
+        odl_extractor_fixture: ODLExtractorTestFixture,
+    ) -> None:
+        """application/webpub+json with book medium falls back to STREAMING_TEXT."""
+        extractor = odl_extractor_fixture.extractor()
+        links = [
+            opds2.StrictLink(
+                rel="http://opds-spec.org/acquisition",
+                type=MediaTypes.WEBPUB_MANIFEST_MEDIA_TYPE,
+                href="http://example.com/catalog/12345",
+            )
+        ]
+
+        formats = extractor._extract_opds2_formats(
+            links,
+            rights_uri=RightsStatus.IN_COPYRIGHT,
+            medium=Edition.BOOK_MEDIUM,
+        )
+
+        assert len(formats) == 1
+        assert formats[0].content_type == DeliveryMechanism.STREAMING_TEXT_CONTENT_TYPE
+        assert formats[0].drm_scheme == DeliveryMechanism.STREAMING_DRM
+
+    def test__extract_opds2_formats_non_webpub_unaffected(
+        self,
+        odl_extractor_fixture: ODLExtractorTestFixture,
+    ) -> None:
+        """Non-webpub acquisition links still go through the normal format path."""
+        extractor = odl_extractor_fixture.extractor()
+        links = [
+            opds2.StrictLink(
+                rel="http://opds-spec.org/acquisition/open-access",
+                type=MediaTypes.EPUB_MEDIA_TYPE,
+                href="http://example.com/book.epub",
+            )
+        ]
+
+        # open-access link — should be skipped by _extract_opds2_formats
+        formats = extractor._extract_opds2_formats(
+            links,
+            rights_uri=RightsStatus.IN_COPYRIGHT,
+            medium=Edition.BOOK_MEDIUM,
+        )
+
+        assert len(formats) == 0

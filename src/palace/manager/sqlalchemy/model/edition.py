@@ -289,6 +289,7 @@ class Edition(Base, EditionConstants):
 
         for types, conclusion in (
             (MediaTypes.AUDIOBOOK_MEDIA_TYPES, Edition.AUDIO_MEDIUM),
+            (MediaTypes.PERIODICAL_MEDIA_TYPES, Edition.PERIODICAL_MEDIUM),
             (MediaTypes.BOOK_MEDIA_TYPES, Edition.BOOK_MEDIUM),
         ):
             if any(media_type.startswith(x) for x in types):
