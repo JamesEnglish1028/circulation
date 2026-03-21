@@ -1290,6 +1290,43 @@ class TestLibrarySettings:
 
         assert get_one(db.session, Library, short_name="invalid_entry_points") is None
 
+    def test_import_libraries_accept_periodical_entry_point(
+        self,
+        flask_app_fixture: FlaskAppFixture,
+        controller: LibrarySettingsController,
+        db: DatabaseTransactionFixture,
+    ):
+        """Test that Periodical is accepted as a valid enabled entry point."""
+        payload = self.import_library_payload(
+            name="Periodicals Enabled",
+            short_name="periodicals_enabled",
+            website_url="https://example.com",
+            patron_support_email="entry@example.com",
+            enabled_entry_points=["All", "Book", "Audio", "Periodical"],
+        )
+
+        libraries_data = {"libraries": [payload]}
+
+        with flask_app_fixture.test_request_context_system_admin(
+            "/", method="POST", json=libraries_data
+        ):
+            response = controller.import_libraries()
+            assert response.status_code == 200
+            result = response.get_json()
+            assert isinstance(result, dict)
+
+            assert len(result["created"]) == 1
+            assert len(result["errors"]) == 0
+
+        library = get_one(db.session, Library, short_name="periodicals_enabled")
+        assert library is not None
+        assert library.settings.enabled_entry_points == [
+            "All",
+            "Book",
+            "Audio",
+            "Periodical",
+        ]
+
     def test_import_libraries_mixed_success_and_errors(
         self,
         flask_app_fixture: FlaskAppFixture,

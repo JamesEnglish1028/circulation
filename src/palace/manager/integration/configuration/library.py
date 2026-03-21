@@ -152,7 +152,6 @@ class LibrarySettings(BaseSettings):
             },
             category="Lanes & Filters",
             format="narrow",
-            read_only=True,
             level=Level.SYS_ADMIN_ONLY,
         ),
     ] = [x.INTERNAL_NAME for x in EntryPoint.DEFAULT_ENABLED]

@@ -210,7 +210,7 @@ class LibrarySettingsController(AdminPermissionsControllerMixin):
                     "large_collection_languages": ["en"],
                     "small_collection_languages": ["es"],
                     "facets_default_order": "added",
-                    "enabled_entry_points": ["All", "Book", "Audio"],
+                    "enabled_entry_points": ["All", "Book", "Audio", "Periodical"],
                     "enable_periodicals_lane": false
                 },
                 ...

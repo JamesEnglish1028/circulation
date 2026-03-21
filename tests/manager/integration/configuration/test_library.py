@@ -1,8 +1,10 @@
 from collections.abc import Callable
 from functools import partial
+from unittest.mock import MagicMock
 
 import pytest
 
+from palace.manager.core.entrypoint import EntryPoint
 from palace.manager.core.classifier import Classifier
 from palace.manager.integration.configuration.library import LibrarySettings
 from palace.manager.util.problem_detail import ProblemDetailException
@@ -109,6 +111,28 @@ def test_enable_periodicals_lane_can_be_enabled(
 ) -> None:
     settings = library_settings(enable_periodicals_lane=True)
     assert settings.enable_periodicals_lane is True
+
+
+def test_enabled_entry_points_configuration_form_includes_periodicals() -> None:
+    form = LibrarySettings.configuration_form(MagicMock())
+    enabled_entry_points = next(
+        item for item in form if item["key"] == "enabled_entry_points"
+    )
+
+    assert enabled_entry_points["type"] == "menu"
+    assert enabled_entry_points.get("readOnly") is not True
+    options = {option["key"]: option["label"] for option in enabled_entry_points["options"]}
+    assert options == {
+        entrypoint.INTERNAL_NAME: EntryPoint.DISPLAY_TITLES[entrypoint]
+        for entrypoint in EntryPoint.ENTRY_POINTS
+    }
+
+
+def test_enabled_entry_points_accept_periodical(
+    library_settings: LibrarySettingsFixture,
+) -> None:
+    settings = library_settings(enabled_entry_points=["All", "Book", "Periodical"])
+    assert settings.enabled_entry_points == ["All", "Book", "Periodical"]
 
 
 class TestFilteredAudiences:
