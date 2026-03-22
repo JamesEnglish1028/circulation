@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from typing import TYPE_CHECKING, Any, Self
 
-from palace.manager.core.entrypoint import EntryPoint, EverythingEntryPoint
+from palace.manager.core.entrypoint import (
+    EntryPoint,
+    EverythingEntryPoint,
+    MediumEntryPoint,
+)
 from palace.manager.feed.facets.constants import FacetConfig
 from palace.manager.feed.facets.feed import Facets
 from palace.manager.sqlalchemy.constants import EditionConstants
@@ -35,6 +39,9 @@ class SearchFacets(Facets):
     def __init__(self, **kwargs: Any) -> None:
         languages = kwargs.pop("languages", None)
         media = kwargs.pop("media", None)
+        self.all_entrypoint_media: list[str] | None = kwargs.pop(
+            "all_entrypoint_media", None
+        )
 
         # Our default_facets implementation will fill in values for
         # the facet groups defined by the Facets class. This
@@ -153,6 +160,17 @@ class SearchFacets(Facets):
         if search_type:
             extra_kwargs["search_type"] = search_type
 
+        # For 'All' searches, include all enabled medium entrypoints rather than
+        # inheriting the top-level WorkList media restriction.
+        if worklist is not None and hasattr(worklist, "entrypoints"):
+            entrypoint_media = [
+                ep.INTERNAL_NAME
+                for ep in worklist.entrypoints
+                if isinstance(ep, type) and issubclass(ep, MediumEntryPoint)
+            ]
+            if entrypoint_media:
+                extra_kwargs["all_entrypoint_media"] = entrypoint_media
+
         return cls._from_request(
             facet_config,
             get_argument,
@@ -183,6 +201,13 @@ class SearchFacets(Facets):
         so that it reflects this SearchFacets object.
         """
         super().modify_search_filter(filter)
+
+        if (
+            self.entrypoint == EverythingEntryPoint
+            and not self.media
+            and self.all_entrypoint_media
+        ):
+            filter.media = self.all_entrypoint_media
 
         if filter.order is not None and filter.min_score is None:
             # The user wants search results to be ordered by one of

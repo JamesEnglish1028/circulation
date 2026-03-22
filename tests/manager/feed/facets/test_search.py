@@ -4,6 +4,7 @@ from palace.manager.core.entrypoint import (
     AudiobooksEntryPoint,
     EbooksEntryPoint,
     EverythingEntryPoint,
+    PeriodicalsEntryPoint,
 )
 from palace.manager.feed.facets.feed import Facets
 from palace.manager.feed.facets.search import SearchFacets
@@ -314,6 +315,24 @@ class TestSearchFacets:
         facets.modify_search_filter(filter)
         assert ["eng", "spa"] == filter.languages
 
+        # The 'All' entrypoint should include all enabled medium entrypoints,
+        # not just inherited top-level WorkList media.
+        facets = SearchFacets(
+            entrypoint=EverythingEntryPoint,
+            all_entrypoint_media=[
+                Edition.BOOK_MEDIUM,
+                Edition.AUDIO_MEDIUM,
+                Edition.PERIODICAL_MEDIUM,
+            ],
+        )
+        filter = Filter(media=[Edition.BOOK_MEDIUM, Edition.AUDIO_MEDIUM])
+        facets.modify_search_filter(filter)
+        assert [
+            Edition.BOOK_MEDIUM,
+            Edition.AUDIO_MEDIUM,
+            Edition.PERIODICAL_MEDIUM,
+        ] == filter.media
+
         # This may result in modify_search_filter being a no-op.
         facets = SearchFacets(languages="eng")
         filter = Filter(languages="eng")
@@ -339,6 +358,45 @@ class TestSearchFacets:
         filter = Filter(languages=["spa"])
         facets.modify_search_filter(filter)
         assert ["spa"] == filter.languages
+
+    def test_from_request_sets_all_entrypoint_media(
+        self, db: DatabaseTransactionFixture, library_fixture: LibraryFixture
+    ):
+        arguments: dict[str, str] = {}
+        headers: dict[str, str] = {}
+        get_argument = arguments.get
+        get_header = headers.get
+
+        library_settings = library_fixture.mock_settings()
+        library_settings.enabled_entry_points = [
+            AudiobooksEntryPoint.INTERNAL_NAME,
+            EbooksEntryPoint.INTERNAL_NAME,
+            PeriodicalsEntryPoint.INTERNAL_NAME,
+        ]
+        library = db.library(settings=library_settings)
+
+        class MockWorkList:
+            entrypoints = [
+                AudiobooksEntryPoint,
+                EbooksEntryPoint,
+                PeriodicalsEntryPoint,
+            ]
+
+        facets = SearchFacets.from_request(
+            library,
+            library,
+            get_argument,
+            get_header,
+            MockWorkList(),
+        )
+
+        assert facets is not None
+        assert isinstance(facets, SearchFacets)
+        assert facets.all_entrypoint_media == [
+            Edition.AUDIO_MEDIUM,
+            Edition.BOOK_MEDIUM,
+            Edition.PERIODICAL_MEDIUM,
+        ]
 
     def test_modify_search_filter_accepts_relevance_order(self):
         # By default, Opensearch orders by relevance, so if order
