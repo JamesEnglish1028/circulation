@@ -904,3 +904,45 @@ class TestOPDS2WithODLExtractor:
         )
 
         assert len(formats) == 0
+
+    def test_publication_bibliographic_webpub_periodical_when_type_is_book(
+        self,
+        odl_extractor_fixture: ODLExtractorTestFixture,
+    ) -> None:
+        """A webpub acquisition link drives periodical medium even with @type=Book.
+
+        This covers feeds that incorrectly set metadata @type to Book while still
+        exposing periodical content through non-open-access webpub acquisition links.
+        """
+        extractor = odl_extractor_fixture.extractor()
+        identifier = odl_extractor_fixture.identifier_data()
+        publication = opds2.Publication(
+            metadata=opds2.PublicationMetadata(
+                type="http://schema.org/Book",
+                identifier=odl_extractor_fixture.publication_identifier,
+                title="Template Webpub Periodical",
+            ),
+            links=[
+                opds2.StrictLink(
+                    rel="http://opds-spec.org/acquisition",
+                    type=MediaTypes.WEBPUB_MANIFEST_MEDIA_TYPE,
+                    href="http://example.com/catalog/39696",
+                    templated=True,
+                )
+            ],
+            images=[],
+        )
+
+        # Non-variable hrefs should not remain templated, even if feed says so.
+        assert publication.links[0].templated is False
+
+        bibliographic = extractor.publication_bibliographic(identifier, publication)
+
+        assert bibliographic.medium == Edition.PERIODICAL_MEDIUM
+        assert bibliographic.circulation is not None
+        assert len(bibliographic.circulation.formats) == 1
+
+        [format_data] = bibliographic.circulation.formats
+        assert format_data.content_type == DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE
+        assert format_data.drm_scheme == DeliveryMechanism.STREAMING_DRM
+        assert format_data.rights_uri == RightsStatus.IN_COPYRIGHT
