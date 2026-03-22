@@ -69,6 +69,14 @@ class InventoryStatistics(StatisticsBaseModel):
     metered_licenses_available: NonNegativeInt = Field(
         description="Metered licenses currently available."
     )
+    periodical_publications: NonNegativeInt = Field(
+        default=0,
+        description="Number of distinct periodical publications (for example, magazine or journal titles).",
+    )
+    periodical_issues: NonNegativeInt = Field(
+        default=0,
+        description="Number of periodical issues.",
+    )
 
 
 class LibraryStatistics(CustomBaseModel):

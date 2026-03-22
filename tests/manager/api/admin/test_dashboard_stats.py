@@ -169,6 +169,8 @@ def test_stats_inventory(admin_statistics_session: AdminStatisticsSessionFixture
         assert 0 == inventory_data.metered_license_titles
         assert 0 == inventory_data.metered_licenses_owned
         assert 0 == inventory_data.metered_licenses_available
+        assert 0 == inventory_data.periodical_publications
+        assert 0 == inventory_data.periodical_issues
 
     # This edition has no licenses owned and isn't counted in the inventory.
     edition1, pool1 = db.edition(
@@ -658,7 +660,7 @@ def test_stats_collections_include_periodical_medium(
     default_collection = db.collection(name="Default Collection")
     default_collection.associated_libraries += [default_library]
 
-    # Add one periodical title with active metered licenses.
+    # Add two periodical issues from the same publication.
     edition, pool = db.edition(
         with_license_pool=True,
         with_open_access_download=False,
@@ -666,9 +668,22 @@ def test_stats_collections_include_periodical_medium(
         collection=default_collection,
     )
     edition.medium = EditionConstants.PERIODICAL_MEDIUM
+    edition.series = "Scientific American"
     pool.open_access = False
     pool.licenses_owned = 7
     pool.licenses_available = 3
+
+    edition2, pool2 = db.edition(
+        with_license_pool=True,
+        with_open_access_download=False,
+        data_source_name=DataSource.OVERDRIVE,
+        collection=default_collection,
+    )
+    edition2.medium = EditionConstants.PERIODICAL_MEDIUM
+    edition2.series = "Scientific American"
+    pool2.open_access = False
+    pool2.licenses_owned = 4
+    pool2.licenses_available = 1
 
     response = session.get_statistics()
 
@@ -676,14 +691,18 @@ def test_stats_collections_include_periodical_medium(
     periodical_inventory = response.inventory_by_medium[
         EditionConstants.PERIODICAL_MEDIUM
     ]
-    assert 1 == periodical_inventory.titles
-    assert 1 == periodical_inventory.available_titles
+    assert 2 == periodical_inventory.titles
+    assert 2 == periodical_inventory.available_titles
     assert 0 == periodical_inventory.open_access_titles
-    assert 1 == periodical_inventory.licensed_titles
+    assert 2 == periodical_inventory.licensed_titles
     assert 0 == periodical_inventory.unlimited_license_titles
-    assert 1 == periodical_inventory.metered_license_titles
-    assert 7 == periodical_inventory.metered_licenses_owned
-    assert 3 == periodical_inventory.metered_licenses_available
+    assert 2 == periodical_inventory.metered_license_titles
+    assert 11 == periodical_inventory.metered_licenses_owned
+    assert 4 == periodical_inventory.metered_licenses_available
+    assert 1 == periodical_inventory.periodical_publications
+    assert 2 == periodical_inventory.periodical_issues
 
-    assert 1 == response.inventory_summary.titles
-    assert 1 == response.inventory_summary.available_titles
+    assert 2 == response.inventory_summary.titles
+    assert 2 == response.inventory_summary.available_titles
+    assert 1 == response.inventory_summary.periodical_publications
+    assert 2 == response.inventory_summary.periodical_issues

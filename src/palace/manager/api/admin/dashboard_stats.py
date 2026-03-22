@@ -41,6 +41,7 @@ class Statistics:
     OPEN_ACCESS_FILTER = and_(  # type: ignore[type-var]
         LicensePool.unlimited_open_access_type, LicensePool.active_status
     )
+    ACTIVE_TITLE_FILTER = or_(METERED_LICENSE_FILTER, UNLIMITED_LICENSE_FILTER, OPEN_ACCESS_FILTER)
     AT_LEAST_ONE_LOANABLE_FILTER = or_(
         UNLIMITED_LICENSE_FILTER,
         OPEN_ACCESS_FILTER,
@@ -212,6 +213,16 @@ class Statistics:
             columns=[count],
             collections=collection_filter,
         )
+        periodical_publication_counts = self._collections_statistics_by_medium_query(
+            and_(
+                self.ACTIVE_TITLE_FILTER,
+                Edition.medium == Edition.PERIODICAL_MEDIUM,
+                Edition.series.is_not(None),
+                Edition.series != "",
+            ),
+            columns=[func.count(distinct(Edition.series)).label("count")],
+            collections=collection_filter,
+        )
         loanable_title_counts = self._collections_statistics_by_medium_query(
             self.AT_LEAST_ONE_LOANABLE_FILTER,
             columns=[count],
@@ -239,6 +250,11 @@ class Statistics:
                 open_access_title_counts=(
                     open_access_title_counts[c.id]
                     if c.id in open_access_title_counts
+                    else {}
+                ),
+                periodical_publication_counts=(
+                    periodical_publication_counts[c.id]
+                    if c.id in periodical_publication_counts
                     else {}
                 ),
                 loanable_title_counts=(
@@ -417,6 +433,7 @@ def _summarize_collection_inventories(
 class _CollectionStatisticsQueryResults:
     unlimited_title_counts: dict[str, dict[str, int]]
     open_access_title_counts: dict[str, dict[str, int]]
+    periodical_publication_counts: dict[str, dict[str, int]]
     loanable_title_counts: dict[str, dict[str, int]]
     metered_title_counts: dict[str, dict[str, int]]
     metered_license_stats: dict[str, dict[str, int]]
@@ -451,9 +468,15 @@ class _CollectionStatisticsQueryResults:
         metered_available_licenses = self._lookup_property(
             "metered_license_stats", medium, "available"
         )
+        periodical_publications = (
+            self._lookup_property("periodical_publication_counts", medium, "count")
+            if medium == Edition.PERIODICAL_MEDIUM
+            else 0
+        )
 
+        total_titles = metered_titles + unlimited_titles + open_access_titles
         return InventoryStatistics(
-            titles=metered_titles + unlimited_titles + open_access_titles,
+            titles=total_titles,
             available_titles=loanable_titles,
             open_access_titles=open_access_titles,
             licensed_titles=metered_titles + unlimited_titles,
@@ -461,6 +484,8 @@ class _CollectionStatisticsQueryResults:
             metered_license_titles=metered_titles,
             metered_licenses_owned=metered_owned_licenses,
             metered_licenses_available=metered_available_licenses,
+            periodical_publications=periodical_publications,
+            periodical_issues=total_titles if medium == Edition.PERIODICAL_MEDIUM else 0,
         )
 
     def _lookup_property(
