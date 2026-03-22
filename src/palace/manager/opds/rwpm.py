@@ -238,10 +238,17 @@ class BelongsTo(BaseOpdsModel):
     """
 
     series_data: StrModelOrTuple[Contributor] | None = Field(None, alias="series")
+    legacy_series_data: StrModelOrTuple[Contributor] | None = Field(
+        None, alias="Series"
+    )
 
     @cached_property
     def series(self) -> Sequence[Contributor]:
-        return _named_or_sequence_to_sequence(self.series_data, Contributor)
+        # Keep compatibility with feeds that used a non-standard uppercase key.
+        return (
+            _named_or_sequence_to_sequence(self.series_data, Contributor)
+            + _named_or_sequence_to_sequence(self.legacy_series_data, Contributor)
+        )
 
     collection: StrModelOrTuple[Contributor] | None = None
 

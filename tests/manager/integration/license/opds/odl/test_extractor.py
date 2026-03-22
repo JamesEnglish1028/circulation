@@ -595,6 +595,29 @@ class TestOPDS2WithODLExtractor:
         assert series is None
         assert position is None
 
+    def test__extract_series_from_belongs_to_legacy_series_alias(self) -> None:
+        """belongsTo.Series (legacy key) is treated the same as belongsTo.series."""
+        metadata = opds2.PublicationMetadata.model_validate(
+            {
+                "@type": "http://schema.org/PublicationIssue",
+                "identifier": "urn:isbn:9780306406157",
+                "title": "Test Periodical",
+                "belongsTo": {
+                    "Series": {
+                        "name": "Legacy Series",
+                        "position": 9,
+                    }
+                },
+            }
+        )
+
+        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
+            metadata
+        )
+
+        assert series == "Legacy Series"
+        assert position == 9
+
     def test__extract_series_from_belongs_to_periodical_precedence(self) -> None:
         """belongsTo.periodical takes precedence over Magazine and series."""
         metadata = opds2.PublicationMetadata(

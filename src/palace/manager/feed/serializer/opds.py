@@ -290,6 +290,12 @@ class BaseOPDS1Serializer(SerializerInterface[etree._Element], OPDSFeed, abc.ABC
 
         if feed_entry.series:
             entry.append(self._serialize_series_entry(feed_entry.series))
+            entry.append(
+                OPDSFeed.E(
+                    f"{{{OPDSFeed.SCHEMA_NS}}}isPartOf",
+                    feed_entry.series.name,
+                )
+            )
 
         for category in feed_entry.categories:
             element = OPDSFeed.category(

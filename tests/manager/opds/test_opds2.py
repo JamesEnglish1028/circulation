@@ -281,6 +281,29 @@ def test_publication_metadata_belongs_to_magazine_standard_key() -> None:
     assert serialized["belongsTo"]["magazine"]["name"] == "Standard Magazine"
 
 
+def test_publication_metadata_belongs_to_series_compatibility_alias() -> None:
+    metadata = PublicationMetadata.model_validate(
+        {
+            "@type": "http://schema.org/PublicationIssue",
+            "title": "Test",
+            "identifier": "urn:uuid:12345678-1234-1234-1234-1234567890ab",
+            "belongsTo": {
+                "Series": {
+                    "name": "Compatibility Series",
+                    "position": 2,
+                }
+            },
+        }
+    )
+
+    assert len(metadata.belongs_to.series) == 1
+    assert str(metadata.belongs_to.series[0].name) == "Compatibility Series"
+    assert metadata.belongs_to.series[0].position == 2
+
+    serialized = metadata.model_dump(mode="json", by_alias=True)
+    assert serialized["belongsTo"]["Series"]["name"] == "Compatibility Series"
+
+
 def test_publication_metadata_contains_serial_content() -> None:
     metadata = PublicationMetadata.model_validate(
         {
