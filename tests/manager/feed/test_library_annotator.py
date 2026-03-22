@@ -31,6 +31,7 @@ from palace.manager.feed.annotator.loan_and_hold import LibraryLoanAndHoldAnnota
 from palace.manager.feed.facets.base import FacetsWithEntryPoint
 from palace.manager.feed.facets.feed import Facets
 from palace.manager.feed.opds import UnfulfillableWork
+from palace.manager.feed.serializer.opds import OPDS1Version1Serializer
 from palace.manager.feed.types import FeedData, LinkContentType, WorkEntry
 from palace.manager.feed.util import strftime
 from palace.manager.feed.worklist.contributor import ContributorLane
@@ -48,6 +49,7 @@ from palace.manager.service.container import container_instance
 from palace.manager.sqlalchemy.model.circulationevent import CirculationEvent
 from palace.manager.sqlalchemy.model.contributor import Contributor
 from palace.manager.sqlalchemy.model.datasource import DataSource
+from palace.manager.sqlalchemy.model.edition import Edition
 from palace.manager.sqlalchemy.model.licensing import (
     DeliveryMechanism,
     LicensePoolType,
@@ -753,6 +755,61 @@ class TestLibraryAnnotator:
 
         self.assert_link_on_entry(open_access_entry, rels=[OPDSFeed.BORROW_REL])
         self.assert_link_on_entry(licensed_entry, rels=[OPDSFeed.BORROW_REL])
+
+    def test_periodical_work_entry_includes_borrow_link_in_opds1_catalog(
+        self, annotator_fixture: LibraryAnnotatorFixture
+    ):
+        lane = annotator_fixture.db.lane()
+        work = annotator_fixture.db.work(with_license_pool=True)
+        [pool] = work.license_pools
+        edition = pool.presentation_edition
+        edition.medium = Edition.PERIODICAL_MEDIUM
+
+        [lpdm] = pool.delivery_mechanisms
+        periodical_mechanism, _ignore = DeliveryMechanism.lookup(
+            annotator_fixture.db.session,
+            DeliveryMechanism.STREAMING_PERIODICAL_CONTENT_TYPE,
+            DeliveryMechanism.STREAMING_DRM,
+        )
+        lpdm.delivery_mechanism = periodical_mechanism
+
+        annotator = LibraryAnnotator(
+            None,
+            lane,
+            annotator_fixture.db.default_library(),
+            library_identifies_patrons=True,
+        )
+        work_entry = WorkEntry(
+            work=work,
+            license_pool=pool,
+            edition=edition,
+            identifier=edition.primary_identifier,
+        )
+
+        annotator.annotate_work_entry(work_entry)
+
+        assert work_entry.computed is not None
+        self.assert_link_on_entry(work_entry, rels=[OPDSFeed.BORROW_REL])
+
+        serialized_entry = OPDS1Version1Serializer().serialize_work_entry(
+            work_entry.computed
+        )
+        borrow_links = serialized_entry.xpath(
+            "link[@rel='http://opds-spec.org/acquisition/borrow']"
+        )
+
+        assert 1 == len(borrow_links)
+        borrow_link = borrow_links[0]
+        assert OPDSFeed.ENTRY_TYPE == borrow_link.get("type")
+
+        indirect_types = [
+            indirect.get("type")
+            for indirect in borrow_link.findall(
+                f".//{{{OPDSFeed.OPDS_NS}}}indirectAcquisition"
+            )
+        ]
+        assert any(indirect_type and indirect_type.startswith("application/atom+xml") for indirect_type in indirect_types)
+        assert any(indirect_type and indirect_type.startswith("text/html") for indirect_type in indirect_types)
 
     def test_language_and_audience_key_from_work(
         self, annotator_fixture: LibraryAnnotatorFixture
