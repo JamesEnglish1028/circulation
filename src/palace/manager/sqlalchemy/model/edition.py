@@ -118,6 +118,7 @@ class Edition(Base, EditionConstants):
     sort_title = Column(Unicode, index=True)
     subtitle = Column(Unicode, index=True)
     series = Column(Unicode, index=True)
+    series_identifier = Column(Unicode, index=True)
     series_position = Column(Integer)
 
     # This is not a foreign key per se; it's a calculated UUID-like

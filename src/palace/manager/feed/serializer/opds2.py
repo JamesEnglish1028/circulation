@@ -161,6 +161,7 @@ class OPDS2Serializer(SerializerInterface[dict[str, Any]], LoggerMixin):
             rwpm.BelongsTo(
                 series_data=rwpm.Contributor(
                     name=data.series.name,
+                    identifier=data.series.identifier,
                     position=data.series.position,
                 )
             )

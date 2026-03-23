@@ -555,12 +555,13 @@ class TestOPDS2WithODLExtractor:
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "My Series"
         assert position == 3
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_no_position(self) -> None:
         """belongsTo.series with no position returns None for position."""
@@ -573,12 +574,13 @@ class TestOPDS2WithODLExtractor:
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Positionless Series"
         assert position is None
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_no_series(self) -> None:
         """Publication with no belongsTo.series returns (None, None)."""
@@ -588,12 +590,13 @@ class TestOPDS2WithODLExtractor:
             title="Test Book",
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series is None
         assert position is None
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_legacy_series_alias(self) -> None:
         """belongsTo.Series (legacy key) is treated the same as belongsTo.series."""
@@ -611,12 +614,13 @@ class TestOPDS2WithODLExtractor:
             }
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Legacy Series"
         assert position == 9
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_periodical_precedence(self) -> None:
         """belongsTo.periodical takes precedence over Magazine and series."""
@@ -625,18 +629,23 @@ class TestOPDS2WithODLExtractor:
             identifier="urn:isbn:9780306406157",
             title="Test Periodical",
             belongs_to=rwpm.BelongsTo(
-                periodical_data=rwpm.Contributor(name="Official Periodical", position=7),
+                periodical_data=rwpm.Contributor(
+                    name="Official Periodical",
+                    identifier="urn:issn:official_periodical",
+                    position=7,
+                ),
                 magazine_data=rwpm.Contributor(name="Legacy Magazine", position=4),
                 series_data=rwpm.Contributor(name="Series Name", position=1),
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Official Periodical"
         assert position == 7
+        assert series_identifier == "urn:issn:official_periodical"
 
     def test__extract_series_from_belongs_to_magazine_fallback(self) -> None:
         """belongsTo.Magazine is used when periodical is absent."""
@@ -650,12 +659,13 @@ class TestOPDS2WithODLExtractor:
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Legacy Magazine"
         assert position == 4
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_journal_fallback(self) -> None:
         """belongsTo.journal is used when periodical and magazine are absent."""
@@ -669,12 +679,13 @@ class TestOPDS2WithODLExtractor:
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Journal Name"
         assert position == 6
+        assert series_identifier is None
 
     def test__extract_bibliographic_data_periodical_series_end_to_end(
         self,
@@ -688,6 +699,7 @@ class TestOPDS2WithODLExtractor:
             belongs_to=rwpm.BelongsTo(
                 periodical_data=rwpm.Contributor(
                     name="Official Periodical",
+                    identifier="urn:issn:official_periodical",
                     position=12,
                 )
             ),
@@ -720,6 +732,7 @@ class TestOPDS2WithODLExtractor:
         assert bibliographic_data.title == "Test Periodical"
         assert bibliographic_data.medium == EditionConstants.PERIODICAL_MEDIUM
         assert bibliographic_data.series == "Official Periodical"
+        assert bibliographic_data.series_identifier == "urn:issn:official_periodical"
         assert bibliographic_data.series_position == 12
 
     def test__extract_series_from_belongs_to_magazine_volume_fallback(self) -> None:
@@ -733,12 +746,13 @@ class TestOPDS2WithODLExtractor:
             ),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "American Scientist"
         assert position == 2025
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_contains_issue_position(self) -> None:
         """contains.issue.position is used as series_position when present."""
@@ -752,12 +766,13 @@ class TestOPDS2WithODLExtractor:
             contains=rwpm.Contains(issue=rwpm.Issue(position=224)),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "American Scientist"
         assert position == 224
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_contains_overrides_contributor_position(
         self,
@@ -773,12 +788,13 @@ class TestOPDS2WithODLExtractor:
             contains=rwpm.Contains(issue=rwpm.Issue(position=52)),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "Science Journal"
         assert position == 52
+        assert series_identifier is None
 
     def test__extract_series_from_belongs_to_contains_no_position(self) -> None:
         """contains present but issue.position absent falls back to contributor."""
@@ -792,12 +808,13 @@ class TestOPDS2WithODLExtractor:
             contains=rwpm.Contains(issue=rwpm.Issue()),
         )
 
-        series, position = OPDS2WithODLExtractor._extract_series_from_belongs_to(
-            metadata
+        series, position, series_identifier = (
+            OPDS2WithODLExtractor._extract_series_from_belongs_to(metadata)
         )
 
         assert series == "People"
         assert position == 3
+        assert series_identifier is None
 
     # -------------------------------------------------------------------------
     # application/webpub+json streaming acquisition tests

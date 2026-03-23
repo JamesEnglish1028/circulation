@@ -116,12 +116,19 @@ class ToFeedEntry:
 
     @classmethod
     def series(
-        cls, series_name: str | None, series_position: int | None
+        cls,
+        series_name: str | None,
+        series_position: int | None,
+        series_identifier: str | None = None,
     ) -> Series | None:
         """Generate a Series object for the given name and position."""
         if not series_name:
             return None
-        return Series(name=series_name, position=series_position)
+        return Series(
+            name=series_name,
+            identifier=series_identifier,
+            position=series_position,
+        )
 
     @classmethod
     def rating(cls, type_uri: str | None, value: float | Decimal) -> Rating:
@@ -315,7 +322,11 @@ class Annotator(ToFeedEntry):
         computed.authors = author_entries.get("authors", [])
 
         if edition.series:
-            computed.series = self.series(edition.series, edition.series_position)
+            computed.series = self.series(
+                edition.series,
+                edition.series_position,
+                edition.series_identifier,
+            )
 
         if edition.duration is not None:
             computed.duration = float(edition.duration)

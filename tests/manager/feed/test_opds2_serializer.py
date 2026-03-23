@@ -153,7 +153,11 @@ class TestOPDS2Serializer:
             categories=[
                 Category(scheme="scheme", term="label", label="label"),
             ],
-            series=Series(name="Series", position=3),
+            series=Series(
+                name="Series",
+                identifier="urn:issn:american_scientist",
+                position=3,
+            ),
             image_links=[
                 Link(
                     href="http://image",
@@ -192,7 +196,13 @@ class TestOPDS2Serializer:
         assert metadata["subject"] == [
             dict(scheme="scheme", code="label", name="label", sortAs="label")
         ]
-        assert metadata["belongsTo"] == dict(series={"name": "Series", "position": 3})
+        assert metadata["belongsTo"] == dict(
+            series={
+                "name": "Series",
+                "identifier": "urn:issn:american_scientist",
+                "position": 3,
+            }
+        )
 
         assert entry["links"] == [
             dict(href="http://link", rel="rel", type="text/html"),

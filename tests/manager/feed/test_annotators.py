@@ -328,6 +328,7 @@ class TestAnnotators:
     ):
         work = db.work(with_license_pool=True, with_open_access_download=True)
         work.presentation_edition.series = "Harry Otter and the Lifetime of Despair"
+        work.presentation_edition.series_identifier = "urn:issn:harry_otter_weekly"
         work.presentation_edition.series_position = 4
 
         feed = OPDSAcquisitionFeed(
@@ -341,6 +342,9 @@ class TestAnnotators:
 
         assert computed.series is not None
         assert computed.series.name == work.presentation_edition.series
+        assert (
+            computed.series.identifier == work.presentation_edition.series_identifier
+        )
         assert computed.series.position == work.presentation_edition.series_position
 
         # The series position can be 0, for a prequel for example.
@@ -356,6 +360,9 @@ class TestAnnotators:
         assert computed is not None
         assert computed.series is not None
         assert computed.series.name == work.presentation_edition.series
+        assert (
+            computed.series.identifier == work.presentation_edition.series_identifier
+        )
         assert computed.series.position == work.presentation_edition.series_position
 
         # If there's no series title, the series tag isn't included.
@@ -371,7 +378,7 @@ class TestAnnotators:
         assert computed.series == None
 
         # No series name
-        assert Annotator.series(None, None) == None
+        assert Annotator.series(None, None, "urn:issn:anything") == None
 
     def test_samples(self, db: DatabaseTransactionFixture):
         session = db.session

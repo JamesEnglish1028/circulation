@@ -944,7 +944,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         # FIXME: There are no measurements in OPDS 2.0
         measurements: list[Any] = []
 
-        series, series_position = self._extract_series_from_belongs_to(
+        series, series_position, series_identifier = self._extract_series_from_belongs_to(
             publication.metadata
         )
 
@@ -967,6 +967,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             contributors=contributors,
             measurements=measurements,
             series=series,
+            series_identifier=series_identifier,
             series_position=series_position,
             links=links,
             data_source_last_updated=last_opds_update,
@@ -976,7 +977,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
     @classmethod
     def _extract_series_from_belongs_to(
         cls, metadata: opds2.PublicationMetadata
-    ) -> tuple[str | None, int | None]:
+    ) -> tuple[str | None, int | None, str | None]:
         """Extract periodical/series name and position from belongsTo metadata.
 
         Precedence order for series name:
@@ -992,6 +993,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         """
         series_name: str | None = None
         contributor_position: int | None = None
+        series_identifier: str | None = None
 
         for contributors in (
             metadata.belongs_to.periodicals,
@@ -1004,6 +1006,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
                 continue
             contributor = contributors[0]
             series_name = str(contributor.name)
+            series_identifier = contributor.identifier
             contributor_position = (
                 contributor.position
                 if contributor.position is not None
@@ -1012,16 +1015,16 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             break
 
         if series_name is None:
-            return None, None
+            return None, None, None
 
         # contains.issue.position is the most precise ordinal for a periodical issue
         # and takes priority over the contributor-level position or volume.
         if metadata.contains is not None and metadata.contains.issue is not None:
             issue_position = metadata.contains.issue.position
             if issue_position is not None:
-                return series_name, issue_position
+                return series_name, issue_position, series_identifier
 
-        return series_name, contributor_position
+        return series_name, contributor_position, series_identifier
 
     @classmethod
     def feed_parse(cls, feed: bytes) -> PublicationFeedNoValidation:
