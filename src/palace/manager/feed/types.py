@@ -105,6 +105,7 @@ class Series:
     name: str
     identifier: str | None = None
     position: int | None = None
+    publication_type: str | None = None
     link: Link | None = None
 
 

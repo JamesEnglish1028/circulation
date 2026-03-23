@@ -120,6 +120,7 @@ class ToFeedEntry:
         series_name: str | None,
         series_position: int | None,
         series_identifier: str | None = None,
+        publication_type: str | None = None,
     ) -> Series | None:
         """Generate a Series object for the given name and position."""
         if not series_name:
@@ -128,6 +129,7 @@ class ToFeedEntry:
             name=series_name,
             identifier=series_identifier,
             position=series_position,
+            publication_type=publication_type,
         )
 
     @classmethod
@@ -326,6 +328,7 @@ class Annotator(ToFeedEntry):
                 edition.series,
                 edition.series_position,
                 edition.series_identifier,
+                edition.publication_type,
             )
 
         if edition.duration is not None:

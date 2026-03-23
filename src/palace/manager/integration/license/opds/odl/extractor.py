@@ -944,7 +944,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         # FIXME: There are no measurements in OPDS 2.0
         measurements: list[Any] = []
 
-        series, series_position, series_identifier = self._extract_series_from_belongs_to(
+        series, series_position, series_identifier, publication_type = self._extract_series_from_belongs_to(
             publication.metadata
         )
 
@@ -969,6 +969,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             series=series,
             series_identifier=series_identifier,
             series_position=series_position,
+            publication_type=publication_type,
             links=links,
             data_source_last_updated=last_opds_update,
             duration=duration,
@@ -977,7 +978,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
     @classmethod
     def _extract_series_from_belongs_to(
         cls, metadata: opds2.PublicationMetadata
-    ) -> tuple[str | None, int | None, str | None]:
+    ) -> tuple[str | None, int | None, str | None, str | None]:
         """Extract periodical/series name and position from belongsTo metadata.
 
         Precedence order for series name:
@@ -990,23 +991,41 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         1. contains.issue.position — most specific issue-level ordinal
         2. contributor.position — standard RWPM series position
         3. contributor.volume — fallback for feeds that use volume instead of position
+
+        Returns:
+            Tuple of (series_name, series_position, series_identifier, publication_type)
+            where publication_type is one of: 'periodical', 'magazine', 'journal', 'newspaper', 'series'
         """
         series_name: str | None = None
         contributor_position: int | None = None
         series_identifier: str | None = None
+        publication_type: str | None = None
 
-        for contributors in (
-            metadata.belongs_to.periodicals,
-            metadata.belongs_to.magazines,
-            metadata.belongs_to.journals,
-            metadata.belongs_to.newspapers,
-            metadata.belongs_to.series,
+        # Map bucket positions to publication type values
+        bucket_types = [
+            "periodical",
+            "magazine",
+            "journal",
+            "newspaper",
+            "series",
+        ]
+
+        for bucket_type, contributors in zip(
+            bucket_types,
+            (
+                metadata.belongs_to.periodicals,
+                metadata.belongs_to.magazines,
+                metadata.belongs_to.journals,
+                metadata.belongs_to.newspapers,
+                metadata.belongs_to.series,
+            ),
         ):
             if not contributors:
                 continue
             contributor = contributors[0]
             series_name = str(contributor.name)
             series_identifier = contributor.identifier
+            publication_type = bucket_type
             contributor_position = (
                 contributor.position
                 if contributor.position is not None
@@ -1015,16 +1034,16 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             break
 
         if series_name is None:
-            return None, None, None
+            return None, None, None, None
 
         # contains.issue.position is the most precise ordinal for a periodical issue
         # and takes priority over the contributor-level position or volume.
         if metadata.contains is not None and metadata.contains.issue is not None:
             issue_position = metadata.contains.issue.position
             if issue_position is not None:
-                return series_name, issue_position, series_identifier
+                return series_name, issue_position, series_identifier, publication_type
 
-        return series_name, contributor_position, series_identifier
+        return series_name, contributor_position, series_identifier, publication_type
 
     @classmethod
     def feed_parse(cls, feed: bytes) -> PublicationFeedNoValidation:

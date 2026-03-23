@@ -158,13 +158,7 @@ class OPDS2Serializer(SerializerInterface[dict[str, Any]], LoggerMixin):
         ]
 
         belongs_to = (
-            rwpm.BelongsTo(
-                series_data=rwpm.Contributor(
-                    name=data.series.name,
-                    identifier=data.series.identifier,
-                    position=data.series.position,
-                )
-            )
+            self._build_belongs_to(data.series)
             if data.series
             else rwpm.BelongsTo()
         )
@@ -353,6 +347,27 @@ class OPDS2Serializer(SerializerInterface[dict[str, Any]], LoggerMixin):
             sort_as=author.sort_name,
             links=links,
         )
+
+    def _build_belongs_to(self, series: Any) -> rwpm.BelongsTo:
+        """Build BelongsTo object, placing series in correct bucket based on publication_type."""
+        contributor = rwpm.Contributor(
+            name=series.name,
+            identifier=series.identifier,
+            position=series.position,
+        )
+
+        # Place series in the appropriate bucket based on publication_type
+        if series.publication_type == "magazine":
+            return rwpm.BelongsTo(magazine_data=contributor)
+        elif series.publication_type == "journal":
+            return rwpm.BelongsTo(journal_data=contributor)
+        elif series.publication_type == "newspaper":
+            return rwpm.BelongsTo(newspaper_data=contributor)
+        elif series.publication_type == "periodical":
+            return rwpm.BelongsTo(periodical_data=contributor)
+        else:
+            # Default to series for generic series or unknown types
+            return rwpm.BelongsTo(series_data=contributor)
 
     @classmethod
     def content_type(cls) -> str:

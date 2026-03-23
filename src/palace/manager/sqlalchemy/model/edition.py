@@ -120,6 +120,7 @@ class Edition(Base, EditionConstants):
     series = Column(Unicode, index=True)
     series_identifier = Column(Unicode, index=True)
     series_position = Column(Integer)
+    publication_type = Column(Unicode, index=True)
 
     # This is not a foreign key per se; it's a calculated UUID-like
     # identifier for this work based on its title and author, used to
