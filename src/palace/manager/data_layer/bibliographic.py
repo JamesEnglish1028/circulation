@@ -44,7 +44,6 @@ _BASIC_EDITION_FIELDS: list[str] = [
     "series",
     "series_identifier",
     "series_position",
-    "publication_type",
     "publisher",
     "imprint",
     "issued",
@@ -69,7 +68,6 @@ class BibliographicData(BaseMutableData):
     series: str | None = None
     series_identifier: str | None = None
     series_position: int | None = None
-    publication_type: str | None = None
     publisher: str | None = None
     imprint: str | None = None
     issued: datetime.date | None = None

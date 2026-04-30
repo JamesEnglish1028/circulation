@@ -286,7 +286,9 @@ class CustomListsController(
             collection = get_one(self._db, Collection, id=collection_id)
             if not collection:
                 self._db.rollback()
-                return MISSING_COLLECTION
+                return MISSING_COLLECTION.detailed(
+                    f"The specified collection does not exist: {collection_id}."
+                )
             if list.library not in collection.active_libraries:
                 self._db.rollback()
                 return COLLECTION_NOT_ACTIVE_FOR_LIST_LIBRARY

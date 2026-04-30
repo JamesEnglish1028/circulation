@@ -53,7 +53,7 @@ class AdminClientSettings(ServiceConfiguration):
     model_config = SettingsConfigDict(env_prefix="PALACE_ADMINUI_")
 
     # This flag suppresses visibility of the collection subscription config in the admin UI.
-    hide_subscription_config: bool = True
+    hide_subscription_config: bool = False
 
     # This is an optional support contact URL. This will be embedded in
     # web pages. http[s] and mailto URLs work best here.
