@@ -250,7 +250,7 @@ class ContributorData(BaseFrozenData, LoggerMixin):
         """
         contributors = (
             _db.query(Contributor)
-            .filter(Contributor.display_name == display_name)
+            .filter(Contributor.display_name.ilike(display_name))
             .filter(Contributor.sort_name != None)
             .all()
         )

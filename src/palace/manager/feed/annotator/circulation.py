@@ -863,18 +863,25 @@ class LibraryAnnotator(CirculationManagerAnnotator):
 
         # Add a link for related books if available.
         if self.may_have_related_works(work):
+            medium = (
+                work.presentation_edition.medium
+                if work.presentation_edition
+                else None
+            )
+            related_url_kwargs: dict = dict(
+                identifier_type=identifier.type,
+                identifier=identifier.identifier,
+                library_short_name=self.library.short_name,
+                _external=True,
+            )
+            if medium:
+                related_url_kwargs["entrypoint"] = medium
             entry.computed.other_links.append(
                 Link(
                     rel="related",
                     type=LinkContentType.OPDS_FEED,
                     title="Recommended Works",
-                    href=self.url_for(
-                        "related_books",
-                        identifier_type=identifier.type,
-                        identifier=identifier.identifier,
-                        library_short_name=self.library.short_name,
-                        _external=True,
-                    ),
+                    href=self.url_for("related_books", **related_url_kwargs),
                 )
             )
 

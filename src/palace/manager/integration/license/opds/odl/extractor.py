@@ -13,6 +13,7 @@ from palace.manager.core.exceptions import PalaceValueError
 from palace.manager.data_layer.bibliographic import BibliographicData
 from palace.manager.data_layer.circulation import CirculationData
 from palace.manager.data_layer.contributor import ContributorData
+from palace.manager.util.personal_names import display_name_to_sort_name
 from palace.manager.data_layer.format import FormatData
 from palace.manager.data_layer.identifier import IdentifierData
 from palace.manager.data_layer.license import LicenseData
@@ -233,9 +234,11 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             else:
                 roles = [default_role]
 
+            display_name = str(contributor.name).strip()
+            sort_name = contributor.sort_as or display_name_to_sort_name(display_name)
             contributor_data = ContributorData(
-                sort_name=contributor.sort_as,
-                display_name=str(contributor.name),
+                sort_name=sort_name,
+                display_name=display_name,
                 family_name=None,
                 wikipedia_name=None,
                 roles=roles,
@@ -944,7 +947,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         # FIXME: There are no measurements in OPDS 2.0
         measurements: list[Any] = []
 
-        series, series_position, series_identifier, publication_type = self._extract_series_from_belongs_to(
+        series, series_position, series_identifier = self._extract_series_from_belongs_to(
             publication.metadata
         )
 
@@ -969,7 +972,6 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             series=series,
             series_identifier=series_identifier,
             series_position=series_position,
-            publication_type=publication_type,
             links=links,
             data_source_last_updated=last_opds_update,
             duration=duration,
@@ -978,7 +980,7 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
     @classmethod
     def _extract_series_from_belongs_to(
         cls, metadata: opds2.PublicationMetadata
-    ) -> tuple[str | None, int | None, str | None, str | None]:
+    ) -> tuple[str | None, int | None, str | None]:
         """Extract periodical/series name and position from belongsTo metadata.
 
         Precedence order for series name:
@@ -991,41 +993,23 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
         1. contains.issue.position — most specific issue-level ordinal
         2. contributor.position — standard RWPM series position
         3. contributor.volume — fallback for feeds that use volume instead of position
-
-        Returns:
-            Tuple of (series_name, series_position, series_identifier, publication_type)
-            where publication_type is one of: 'periodical', 'magazine', 'journal', 'newspaper', 'series'
         """
         series_name: str | None = None
         contributor_position: int | None = None
         series_identifier: str | None = None
-        publication_type: str | None = None
 
-        # Map bucket positions to publication type values
-        bucket_types = [
-            "periodical",
-            "magazine",
-            "journal",
-            "newspaper",
-            "series",
-        ]
-
-        for bucket_type, contributors in zip(
-            bucket_types,
-            (
-                metadata.belongs_to.periodicals,
-                metadata.belongs_to.magazines,
-                metadata.belongs_to.journals,
-                metadata.belongs_to.newspapers,
-                metadata.belongs_to.series,
-            ),
+        for contributors in (
+            metadata.belongs_to.periodicals,
+            metadata.belongs_to.magazines,
+            metadata.belongs_to.journals,
+            metadata.belongs_to.newspapers,
+            metadata.belongs_to.series,
         ):
             if not contributors:
                 continue
             contributor = contributors[0]
             series_name = str(contributor.name)
             series_identifier = contributor.identifier
-            publication_type = bucket_type
             contributor_position = (
                 contributor.position
                 if contributor.position is not None
@@ -1034,16 +1018,16 @@ class OPDS2WithODLExtractor[PublicationType: opds2.BasePublication](
             break
 
         if series_name is None:
-            return None, None, None, None
+            return None, None, None
 
         # contains.issue.position is the most precise ordinal for a periodical issue
         # and takes priority over the contributor-level position or volume.
         if metadata.contains is not None and metadata.contains.issue is not None:
             issue_position = metadata.contains.issue.position
             if issue_position is not None:
-                return series_name, issue_position, series_identifier, publication_type
+                return series_name, issue_position, series_identifier
 
-        return series_name, contributor_position, series_identifier, publication_type
+        return series_name, contributor_position, series_identifier
 
     @classmethod
     def feed_parse(cls, feed: bytes) -> PublicationFeedNoValidation:
